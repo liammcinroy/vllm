@@ -26,16 +26,25 @@ def with_nvml_context(fn):
 
 @lru_cache(maxsize=8)
 @with_nvml_context
-def get_physical_device_capability(device_id: int = 0) -> Tuple[int, int]:
-    handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
+def get_physical_device_capability(
+    device_id: int | str = 0
+) -> Tuple[int, int]:
+    if isinstance(device_id, int):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
+    else:
+        handle = pynvml.nvmlDeviceGetHandleByUUID(device_id)
     return pynvml.nvmlDeviceGetCudaComputeCapability(handle)
 
 
-def device_id_to_physical_device_id(device_id: int) -> int:
+def device_id_to_physical_device_id(device_id: int) -> int | str:
     if "CUDA_VISIBLE_DEVICES" in os.environ:
         device_ids = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
         physical_device_id = device_ids[device_id]
-        return int(physical_device_id)
+        try:
+            return int(physical_device_id)
+        except ValueError:
+            # a UUID has been supplied
+            return physical_device_id
     else:
         return device_id
 
